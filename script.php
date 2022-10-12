@@ -10,17 +10,27 @@ function main()
         $fileName = getValidFileName();
         $inputStream = fopen($fileName, 'r');
         $tmpStream = tmpfile();
-        $transactionQueues = [
+        $uncompletedIndexes = [
             'Buy_POS' => [],
             'Buy_NEG' => [],
             'Sell_POS' => [],
             'Sell_NEG' => [],
         ];
+        $transactions = [];
+        $index = 0;
+        $currentTimestamp = 0;
         ignoreHeaders($inputStream);
         while ($line = fgetcsv($inputStream)) {
+            if ($currentTimestamp !== strtotime($line[1])) {
+                $content = processToJson($transactions);
+                fwrite($tmpStream, $content);
+                $transactions = [];
+            }
+            $currentTimestamp = strtotime($line[1]);
+            $index++;
             validateLine($line);
             $income = 0 < $line[5];
-            $transaction = new Transaction(
+            $transactions[$index] = new Transaction(
                 strtotime($line[1]),
                 $line[3],
                 $income ? $line[4] : null,
@@ -28,25 +38,22 @@ function main()
                 ! $income ? $line[4] : null,
                 ! $income ? (-$line[5]) : null
             );
-            switch ($transaction->getType()) {
+            switch ($transactions[$index]->getType()) {
                 case 'Buy':
                 case 'Sell':
-                    $counterpart = array_shift($transactionQueues[$transaction->getType() . "_" . ($income ? "NEG" : "POS")]);
-                    if ($counterpart) {
+                    $counterpartIndex = array_shift($uncompletedIndexes[$transactions[$index]->getType() . "_" . ($income ? "NEG" : "POS")]);
+                    if ($counterpartIndex) {
                         if ($income) {
-                            $transaction->setSellAmount($counterpart->getSellAmount());
-                            $transaction->setSellCurrency($counterpart->getSellCurrency());
+                            $transactions[$counterpartIndex]->setBuyAmount($transactions[$index]->getBuyAmount());
+                            $transactions[$counterpartIndex]->setBuyCurrency($transactions[$index]->getBuyCurrency());
                         } else {
-                            $transaction->setBuyAmount($counterpart->getBuyAmount());
-                            $transaction->setBuyCurrency($counterpart->getBuyCurrency());
+                            $transactions[$counterpartIndex]->setSellAmount($transactions[$index]->getSellAmount());
+                            $transactions[$counterpartIndex]->setSellCurrency($transactions[$index]->getSellCurrency());
                         }
-                        fwrite($tmpStream, $transaction->toJson());
+                        unset($transactions[$index]);
                     } else {
-                        $transactionQueues[$transaction->getType() . "_" . ($income ?  "POS": "NEG")][] =  $transaction;
+                        $uncompletedIndexes[$transactions[$index]->getType() . "_" . ($income ?  "POS": "NEG")][] =  $index;
                     }
-                    break;
-                default:
-                    fwrite($tmpStream, $transaction->toJson());
             }
         }
         fclose($inputStream);
@@ -55,6 +62,32 @@ function main()
     } catch (Exception $e) {
         echo $e->getMessage() . "\n";
     }
+}
+
+function processToJson(array $transactions): string
+{
+    $content = '';
+    $trades = array_filter($transactions, function (Transaction $t) {
+        return in_array($t->getType(), ["Buy", "Sell"]);
+    });
+    $fees = array_filter($transactions, function (Transaction $t) {
+        return in_array($t->getType(), ["Fee"]);
+    });
+    $others = array_filter($transactions, function (Transaction $t) {
+        return !in_array($t->getType(), ["Fee", "Buy", "Sell"]);
+    });
+    while(count($trades)) {
+        $content .= array_shift($trades)->toJson();
+        if (count($fees))$content .= array_shift($fees)->toJson();
+    }
+    foreach($fees as $fee) {
+        echo "there are some";
+        $content .= $fee->toJson();
+    }
+    foreach($others as $other) {
+        $content .= $other->toJson();
+    }
+    return $content;
 }
 
 function generateKey(Transaction $transaction)
