@@ -1,10 +1,12 @@
 <?php
 
+require_once 'Types/TransactionType.php';
+
 class Transaction
 {
     /**
      * @param int $time
-     * @param string $type
+     * @param TransactionType $type
      * @param string|null $buyCurrency
      * @param string|null $buyAmount
      * @param string|null $sellCurrency
@@ -12,7 +14,7 @@ class Transaction
      */
     public function __construct(
         private int $time,
-        private string $type,
+        private TransactionType $type,
         private ?string $buyCurrency,
         private ?float $buyAmount,
         private ?string $sellCurrency,
@@ -60,9 +62,9 @@ class Transaction
     }
 
     /**
-     * @return string
+     * @return TransactionType
      */
-    public function getType(): string
+    public function getType(): TransactionType
     {
         return $this->type;
     }

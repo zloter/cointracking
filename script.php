@@ -1,20 +1,20 @@
 <?php
 
-require 'Types/Transaction.php';
+require_once 'Types/Transaction.php';
+require_once 'Types/TransactionType.php';
 
 main();
 
 function main()
 {
+    date_default_timezone_set("Europe/Warsaw"); // to ease to comparison
     try {
         $fileName = getValidFileName();
         $inputStream = fopen($fileName, 'r');
         $tmpStream = tmpfile();
         $uncompletedIndexes = [
-            'Buy_POS' => [],
-            'Buy_NEG' => [],
-            'Sell_POS' => [],
-            'Sell_NEG' => [],
+            'POS' => [],
+            'NEG' => [],
         ];
         $transactions = [];
         $index = 0;
@@ -22,8 +22,7 @@ function main()
         ignoreHeaders($inputStream);
         while ($line = fgetcsv($inputStream)) {
             if ($currentTimestamp !== strtotime($line[1])) {
-                $content = processToJson($transactions);
-                fwrite($tmpStream, $content);
+                fwrite($tmpStream, processToJson($transactions));
                 $transactions = [];
             }
             $currentTimestamp = strtotime($line[1]);
@@ -32,16 +31,15 @@ function main()
             $income = 0 < $line[5];
             $transactions[$index] = new Transaction(
                 strtotime($line[1]),
-                $line[3],
+                mapType($line[3]),
                 $income ? $line[4] : null,
                 $income ? $line[5] : null,
                 ! $income ? $line[4] : null,
                 ! $income ? (-$line[5]) : null
             );
             switch ($transactions[$index]->getType()) {
-                case 'Buy':
-                case 'Sell':
-                    $counterpartIndex = array_shift($uncompletedIndexes[$transactions[$index]->getType() . "_" . ($income ? "NEG" : "POS")]);
+                case TransactionType::TRADE:
+                    $counterpartIndex = array_shift($uncompletedIndexes[($income ? "NEG" : "POS")]);
                     if ($counterpartIndex) {
                         if ($income) {
                             $transactions[$counterpartIndex]->setBuyAmount($transactions[$index]->getBuyAmount());
@@ -52,10 +50,11 @@ function main()
                         }
                         unset($transactions[$index]);
                     } else {
-                        $uncompletedIndexes[$transactions[$index]->getType() . "_" . ($income ?  "POS": "NEG")][] =  $index;
+                        $uncompletedIndexes[($income ?  "POS": "NEG")][] =  $index;
                     }
             }
         }
+        fwrite($tmpStream, processToJson($transactions));
         fclose($inputStream);
         outputJson($tmpStream);
         fclose($tmpStream);
@@ -64,17 +63,36 @@ function main()
     }
 }
 
+function mapType(mixed $type) :TransactionType
+{
+    switch ($type) {
+        case "Sell":
+        case "Buy":
+            return TransactionType::TRADE;
+        case "Fee":
+            return TransactionType::FEE;
+        case "Referral Kickback":
+            return TransactionType::REWARD;
+        case "Deposit":
+            return TransactionType::DEPOSIT;
+        case "Super BNB Mining":
+            return TransactionType::MINING;
+        default:
+            throw new Exception("UndefinedTransactionType: $type");
+    }
+}
+
 function processToJson(array $transactions): string
 {
     $content = '';
     $trades = array_filter($transactions, function (Transaction $t) {
-        return in_array($t->getType(), ["Buy", "Sell"]);
+        return $t->getType() === TransactionType::TRADE;
     });
     $fees = array_filter($transactions, function (Transaction $t) {
-        return in_array($t->getType(), ["Fee"]);
+        return $t->getType() === TransactionType::FEE;
     });
     $others = array_filter($transactions, function (Transaction $t) {
-        return !in_array($t->getType(), ["Fee", "Buy", "Sell"]);
+        return ! in_array($t->getType(), [TransactionType::FEE, TransactionType::TRADE]);
     });
     while(count($trades)) {
         $content .= array_shift($trades)->toJson();
@@ -88,11 +106,6 @@ function processToJson(array $transactions): string
         $content .= $other->toJson();
     }
     return $content;
-}
-
-function generateKey(Transaction $transaction)
-{
-    return $transaction->getTime() . "_" . $transaction->getType();
 }
 
 function ignoreHeaders($stream)
