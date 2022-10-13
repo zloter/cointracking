@@ -2,6 +2,7 @@
 
 require_once 'Types/Transaction.php';
 require_once 'Types/TransactionType.php';
+require_once "Types/Column.php";
 
 main();
 
@@ -19,35 +20,28 @@ function main()
         $transactions = [];
         $index = 0;
         $currentTimestamp = 0;
-        ignoreHeaders($inputStream);
+        $headers = mapHeaders(fgetcsv($inputStream));
         while ($line = fgetcsv($inputStream)) {
             if ($currentTimestamp !== strtotime($line[1])) {
                 fwrite($tmpStream, processToJson($transactions));
                 $transactions = [];
             }
-            $currentTimestamp = strtotime($line[1]);
+            $currentTimestamp = strtotime(getCell($line, $headers, Column::Time));
             $index++;
-            validateLine($line);
-            $income = 0 < $line[5];
+            $income = 0 < getCell($line, $headers, Column::Amount);
             $transactions[$index] = new Transaction(
-                strtotime($line[1]),
-                mapType($line[3]),
-                $income ? $line[4] : null,
-                $income ? $line[5] : null,
-                ! $income ? $line[4] : null,
-                ! $income ? (-$line[5]) : null
+                strtotime(getCell($line, $headers, Column::Time)),
+                mapType(getCell($line, $headers, Column::Type)),
+                $income ? getCell($line, $headers, Column::Currency) : null,
+                $income ? getCell($line, $headers, Column::Amount) : null,
+                ! $income ? getCell($line, $headers, Column::Currency) : null,
+                ! $income ? (-getCell($line, $headers, Column::Amount)) : null
             );
             switch ($transactions[$index]->getType()) {
                 case TransactionType::TRADE:
                     $counterpartIndex = array_shift($uncompletedIndexes[($income ? "NEG" : "POS")]);
                     if ($counterpartIndex) {
-                        if ($income) {
-                            $transactions[$counterpartIndex]->setBuyAmount($transactions[$index]->getBuyAmount());
-                            $transactions[$counterpartIndex]->setBuyCurrency($transactions[$index]->getBuyCurrency());
-                        } else {
-                            $transactions[$counterpartIndex]->setSellAmount($transactions[$index]->getSellAmount());
-                            $transactions[$counterpartIndex]->setSellCurrency($transactions[$index]->getSellCurrency());
-                        }
+                        $transactions[$counterpartIndex]->copyMissingData($transactions[$index]);
                         unset($transactions[$index]);
                     } else {
                         $uncompletedIndexes[($income ?  "POS": "NEG")][] =  $index;
@@ -59,7 +53,7 @@ function main()
         outputJson($tmpStream);
         fclose($tmpStream);
     } catch (Exception $e) {
-        echo $e->getMessage() . "\n";
+        echo $e->getMessage() . "\n" . $e->getLine() . "\n ";
     }
 }
 
@@ -108,9 +102,20 @@ function processToJson(array $transactions): string
     return $content;
 }
 
-function ignoreHeaders($stream)
+function mapHeaders(array $headers)
 {
-    fgetcsv($stream);
+    return [
+        Column::Time->value => array_search("UTC_Time", $headers),
+        Column::Type->value => array_search("Operation", $headers),
+        Column::Operation->value => array_search("Operation", $headers),
+        Column::Currency->value => array_search("Coin", $headers),
+        Column::Amount->value => array_search("Change", $headers)
+    ];
+}
+
+function getCell(array $line, array $headers, Column $column)
+{
+    return $line[$headers[$column->value]];
 }
 
 /**
@@ -131,12 +136,6 @@ function getValidFileName(): string
         throw new Exception('FileNotExistsOrUnreadable');
     }
     return $fileName;
-}
-
-
-function validateLine(array $line)
-{
-    return null;
 }
 
 /**

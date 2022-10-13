@@ -8,9 +8,10 @@ class Transaction
      * @param int $time
      * @param TransactionType $type
      * @param string|null $buyCurrency
-     * @param string|null $buyAmount
+     * @param float|null $buyAmount
      * @param string|null $sellCurrency
-     * @param string|null $sellAmount
+     * @param float|null $sellAmount
+     * @throws Exception
      */
     public function __construct(
         private int $time,
@@ -19,46 +20,13 @@ class Transaction
         private ?float $buyAmount,
         private ?string $sellCurrency,
         private ?float $sellAmount,
-    ) {}
-
-    /**
-     * @param string|null $buyCurrency
-     */
-    public function setBuyCurrency(?string $buyCurrency): void
-    {
-        $this->buyCurrency = $buyCurrency;
-    }
-
-    /**
-     * @param string|null $buyAmount
-     */
-    public function setBuyAmount(?string $buyAmount): void
-    {
-        $this->buyAmount = $buyAmount;
-    }
-
-    /**
-     * @param string|null $sellCurrency
-     */
-    public function setSellCurrency(?string $sellCurrency): void
-    {
-        $this->sellCurrency = $sellCurrency;
-    }
-
-    /**
-     * @param string|null $sellAmount
-     */
-    public function setSellAmount(?string $sellAmount): void
-    {
-        $this->sellAmount = $sellAmount;
-    }
-
-    /**
-     * @return int
-     */
-    public function getTime(): int
-    {
-        return $this->time;
+    ) {
+        if (! empty($buyCurrency) && ! ctype_upper($buyCurrency)) {
+            throw new Exception("CurrencyNotUppercase $buyCurrency");
+        }
+        if (! empty($sellCurrency) && ! ctype_upper($sellCurrency)) {
+            throw new Exception("CurrencyNotUppercase $sellCurrency");
+        }
     }
 
     /**
@@ -101,7 +69,10 @@ class Transaction
         return $this->sellAmount;
     }
 
-    public function toJson()
+    /**
+     * @return string
+     */
+    public function toJson(): string
     {
         $arr = [];
         $arr['time'] = $this->time;
@@ -120,4 +91,17 @@ class Transaction
         }
         return json_encode($arr, JSON_PRETTY_PRINT);
     }
+
+    /**
+     * @param Transaction $transaction
+     * @return void
+     */
+    public function copyMissingData(Transaction $transaction): void
+    {
+        $this->buyAmount = $this->buyAmount ?? $transaction->getBuyAmount();
+        $this->buyCurrency = $this->buyCurrency ?? $transaction->getBuyCurrency();
+        $this->sellAmount = $this->sellAmount ?? $transaction->getSellAmount();
+        $this->sellCurrency = $this->sellCurrency ?? $transaction->getSellCurrency();
+    }
+
 }
