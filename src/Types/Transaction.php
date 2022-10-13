@@ -1,6 +1,9 @@
 <?php
 
-require_once 'Types/TransactionType.php';
+namespace Zloter\Cointracking\Types;
+
+use Zloter\Cointracking\Types\TransactionType;
+use \Exception;
 
 class Transaction
 {
@@ -14,17 +17,18 @@ class Transaction
      * @throws Exception
      */
     public function __construct(
-        private int $time,
+        private int             $time,
         private TransactionType $type,
-        private ?string $buyCurrency,
-        private ?float $buyAmount,
-        private ?string $sellCurrency,
-        private ?float $sellAmount,
-    ) {
-        if (! empty($buyCurrency) && ! ctype_upper($buyCurrency)) {
+        private ?string         $buyCurrency,
+        private ?float          $buyAmount,
+        private ?string         $sellCurrency,
+        private ?float          $sellAmount,
+    )
+    {
+        if (!empty($buyCurrency) && !ctype_upper($buyCurrency)) {
             throw new Exception("CurrencyNotUppercase $buyCurrency");
         }
-        if (! empty($sellCurrency) && ! ctype_upper($sellCurrency)) {
+        if (!empty($sellCurrency) && !ctype_upper($sellCurrency)) {
             throw new Exception("CurrencyNotUppercase $sellCurrency");
         }
     }

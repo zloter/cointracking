@@ -1,0 +1,15 @@
+{
+    "name": "zloter/cointracking",
+    "autoload": {
+        "psr-4": {
+            "Zloter\\Cointracking\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "zloter",
+            "email": "zygmuntloter@gmail.com"
+        }
+    ],
+    "require": {}
+}

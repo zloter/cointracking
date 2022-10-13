@@ -1,5 +1,7 @@
 <?php
 
+namespace Zloter\Cointracking\Types;
+
 enum TransactionType: string
 {
     case TRADE = "Trade";

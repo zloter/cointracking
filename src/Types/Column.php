@@ -1,5 +1,7 @@
 <?php
 
+namespace Zloter\Cointracking\Types;
+
 enum Column: string
 {
     case Time = "Time";

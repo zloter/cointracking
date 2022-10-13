@@ -1,8 +1,10 @@
 <?php
 
-require_once 'Types/Transaction.php';
-require_once 'Types/TransactionType.php';
-require_once "Types/Column.php";
+require_once "vendor/autoload.php";
+
+use Zloter\Cointracking\Types\Column;
+use Zloter\Cointracking\Types\Transaction;
+use Zloter\Cointracking\Types\TransactionType;
 
 main();
 
