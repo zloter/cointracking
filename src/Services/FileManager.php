@@ -5,7 +5,7 @@ namespace Zloter\Cointracking\Services;
 class FileManager
 {
 
-    const VALID_EXTENSIONS = ['csv'];
+    const VALID_EXTENSIONS = ['csv', 'xls'];
 
     public function save($stream, string $content)
     {
@@ -49,7 +49,7 @@ class FileManager
         if (! $fileName) {
             throw new \Exception('NoInputFile');
         }
-        $file_extension = pathinfo($fileName, PATHINFO_EXTENSION);
+        $file_extension = $this->getExtension($fileName);
         if (! in_array($file_extension, self::VALID_EXTENSIONS)) {
             throw new \Exception('InvalidFileType');
         }
@@ -57,6 +57,11 @@ class FileManager
             throw new \Exception('FileNotExistsOrUnreadable');
         }
         return $fileName;
+    }
+
+    public function getExtension($fileName): string
+    {
+        return pathinfo($fileName, PATHINFO_EXTENSION);
     }
 
     public function close($tmp)

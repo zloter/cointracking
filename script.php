@@ -2,9 +2,9 @@
 
 require_once "vendor/autoload.php";
 
-use Zloter\Cointracking\Services\JsonFormatter;
+use Zloter\Cointracking\Reader\ReaderFactory;
 use Zloter\Cointracking\Services\FileManager;
-use Zloter\Cointracking\Services\SpoutReader;
+use Zloter\Cointracking\Services\JsonFormatter;
 use Zloter\Cointracking\Services\TransactionService;
 use Zloter\Cointracking\Commands\ProcessTransactionSheetToJson;
 
@@ -18,7 +18,11 @@ function main()
         $fileManager = new FileManager();
         $transactionService = new TransactionService();
         $jsonFormatter = new JsonFormatter();
-        $reader = new SpoutReader();
+
+        $ext = $fileManager->getExtension($fileManager->getValidFileName());
+        $reader = ReaderFactory::createReader($ext);
+
+
         (new ProcessTransactionSheetToJson($fileManager, $transactionService, $jsonFormatter, $reader))();
 
     } catch (Exception $e) {

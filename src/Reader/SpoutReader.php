@@ -1,10 +1,14 @@
 <?php
 
-namespace Zloter\Cointracking\Services;
+namespace Zloter\Cointracking\Reader;
 
 use OpenSpout\Reader\Common\Creator\ReaderFactory;
 use Zloter\Cointracking\Types\Column;
 
+/**
+ * This class can take csv, xlsx and odt files and read them line by line
+ * thanks to it's possible to read large files
+ */
 class SpoutReader extends SpreadSheetReader
 {
     /**
@@ -15,9 +19,8 @@ class SpoutReader extends SpreadSheetReader
      * @throws \OpenSpout\Common\Exception\UnsupportedTypeException
      * @throws \OpenSpout\Reader\Exception\ReaderNotOpenedException
      */
-    public function readRows(callable $f, string $filename)
+    public function readRows(callable $processRow, callable $processBatch, string $filename): void
     {
-
         $reader = ReaderFactory::createFromFile($filename);
         $reader->open($filename);
         $transactions = [];
@@ -30,13 +33,16 @@ class SpoutReader extends SpreadSheetReader
                 if (0 === $index) {
                     $headers = $this->mapHeaders($line);
                 } else {
-                    $transactions = $f($line, $index, $transactions, $currentTimestamp, $headers);
+                    if (strtotime($this->getCell($line, $headers, Column::Time)) !== $currentTimestamp) {
+                        $processBatch($transactions);
+                        $transactions = [];
+                    }
+                    $transactions = $processRow($line, $index, $transactions, $headers);
                     $currentTimestamp = strtotime($this->getCell($line, $headers, Column::Time));
                 }
                 $index++;
             }
+            $processBatch($transactions);
         }
-
-        $reader->close();
     }
 }

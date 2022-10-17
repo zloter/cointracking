@@ -5,7 +5,7 @@ namespace Zloter\Cointracking\Commands;
 
 use Zloter\Cointracking\Services\FileManager;
 use Zloter\Cointracking\Services\JsonFormatter;
-use Zloter\Cointracking\Services\SpreadSheetReader;
+use Zloter\Cointracking\Reader\SpreadSheetReader;
 use Zloter\Cointracking\Services\TransactionService;
 use Zloter\Cointracking\Types\Column;
 use Zloter\Cointracking\Types\Transaction;
@@ -37,18 +37,7 @@ class ProcessTransactionSheetToJson
         $tmp = $this->fileManager->newTmp();
         $this->fileManager->save($tmp, $this->jsonFormatter->openArray());
 
-        $this->spreadSheetReader->readRows(function (
-            array $line,
-            int $index,
-            array $transactions,
-            int $currentTimestamp,
-            array $headers = []
-        ) use ($tmp) {
-            if ($currentTimestamp !== strtotime($this->spreadSheetReader->getCell($line, $headers, Column::Time))) {
-                $transactions = $this->transactionService->sortAndMerge($transactions);
-                $this->fileManager->save($tmp, $this->jsonFormatter->transactionsToJson($transactions));
-                $transactions = [];
-            }
+        $this->spreadSheetReader->readRows(function (array $line, int $index, array $transactions, array $headers = []) {
             $income = 0 < $this->spreadSheetReader->getCell($line, $headers, Column::Amount);
             $transactions[$index] = new Transaction(
                 strtotime($this->spreadSheetReader->getCell($line, $headers, Column::Time)),
@@ -59,6 +48,9 @@ class ProcessTransactionSheetToJson
                 !$income ? (-$this->spreadSheetReader->getCell($line, $headers, Column::Amount)) : null
             );
             return $transactions;
+        }, function ($transactions) use ($tmp) {
+            $transactions = $this->transactionService->sortAndMerge($transactions);
+            $this->fileManager->save($tmp, $this->jsonFormatter->transactionsToJson($transactions));
         }, $this->fileManager->getValidFileName());
 
         $this->fileManager->save($tmp, $this->jsonFormatter->closeArray());

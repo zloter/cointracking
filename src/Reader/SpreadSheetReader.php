@@ -1,17 +1,18 @@
 <?php
 
-namespace Zloter\Cointracking\Services;
+namespace Zloter\Cointracking\Reader;
 
 use Zloter\Cointracking\Types\Column;
+use Zloter\Cointracking\Types\Transaction;
 
 abstract class SpreadSheetReader
 {
     /**
      * @param callable $f
      * @param string $filename
-     * @return mixed
+     * @return Transaction[]
      */
-    public abstract function readRows(callable $f, string $filename);
+    public abstract function readRows(callable $processRow, callable $processBatch, string $filename): void;
 
 
     /**

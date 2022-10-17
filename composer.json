@@ -12,6 +12,7 @@
         }
     ],
     "require": {
-        "openspout/openspout": "^4.7"
+        "openspout/openspout": "^4.7",
+        "phpoffice/phpspreadsheet": "^1.25"
     }
 }
