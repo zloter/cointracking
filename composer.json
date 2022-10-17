@@ -11,5 +11,7 @@
             "email": "zygmuntloter@gmail.com"
         }
     ],
-    "require": {}
+    "require": {
+        "openspout/openspout": "^4.7"
+    }
 }

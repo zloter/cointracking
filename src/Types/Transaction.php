@@ -7,6 +7,7 @@ use \Exception;
 
 class Transaction
 {
+
     /**
      * @param int $time
      * @param TransactionType $type
@@ -33,6 +34,13 @@ class Transaction
         }
     }
 
+    /**
+     * @return int
+     */
+    public function getTime(): int
+    {
+        return $this->time;
+    }
     /**
      * @return TransactionType
      */
@@ -71,29 +79,6 @@ class Transaction
     public function getSellAmount(): ?string
     {
         return $this->sellAmount;
-    }
-
-    /**
-     * @return string
-     */
-    public function toJson(): string
-    {
-        $arr = [];
-        $arr['time'] = $this->time;
-        $arr['type'] = $this->type;
-        if ($this->buyCurrency) {
-            $arr['buy_currency'] = $this->buyCurrency;
-        }
-        if ($this->buyAmount) {
-            $arr['buy'] = $this->buyAmount;
-        }
-        if ($this->sellCurrency) {
-            $arr['sell_currency'] = $this->sellCurrency;
-        }
-        if ($this->sellAmount) {
-            $arr['sell'] = $this->sellAmount;
-        }
-        return json_encode($arr, JSON_PRETTY_PRINT);
     }
 
     /**
