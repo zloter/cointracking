@@ -19,7 +19,7 @@ class TransactionService
             'NEG' => [],
         ];
         foreach($transactions as $index => $transaction) {
-            $income = null === $transaction->getSellAmount();
+            $income = null === $transaction->getSellPayment();
             if ($transaction->getType() === TransactionType::TRADE) {
                 $counterpartIndex = array_shift($uncompletedIndexes[($income ? "NEG" : "POS")]);
                 if ($counterpartIndex) {
@@ -30,29 +30,7 @@ class TransactionService
                 }
             }
         }
-        $sorted = [];
-        $trades = array_filter($transactions, function (Transaction $t) {
-            return $t->getType() === TransactionType::TRADE;
-        });
-        $fees = array_filter($transactions, function (Transaction $t) {
-            return $t->getType() === TransactionType::FEE;
-        });
-        $others = array_filter($transactions, function (Transaction $t) {
-            return ! in_array($t->getType(), [TransactionType::FEE, TransactionType::TRADE]);
-        });
-        while(count($trades)) {
-            $sorted[] = array_shift($trades);
-            if (count($fees)) {
-                $sorted[] = array_shift($fees);
-            }
-        }
-        foreach($fees as $fee) {
-            $sorted[] = $fee;
-        }
-        foreach($others as $other) {
-            $sorted[] = $other;
-        }
-        return $sorted;
+        return $this->sort($transactions);
     }
 
     /**
@@ -70,5 +48,61 @@ class TransactionService
             "Super BNB Mining" => TransactionType::MINING,
             default => throw new \Exception("UndefinedTransactionType: $type")
         };
+    }
+
+    /**
+     * Assumed order of transaction with same timestamp
+     * All pairs (Trade, Fee to Trade), bonuses
+     *
+     * To fit fee with trade I'm using dolar value
+     * @param Transaction[] $transactions
+     * @return Transaction[]
+     */
+    private function sort(array $transactions): array
+    {
+        $sorted = [];
+        $trades = array_values(array_filter($transactions, function (Transaction $t) {
+            return $t->getType() === TransactionType::TRADE;
+        }));
+        $fees = array_values(array_filter($transactions, function (Transaction $t) {
+            return $t->getType() === TransactionType::FEE;
+        }));
+        $others = array_values(array_filter($transactions, function (Transaction $t) {
+            return ! in_array($t->getType(), [TransactionType::FEE, TransactionType::TRADE]);
+        }));
+
+        $tradeRanks = $this->rankBySellPrices($trades);
+        $feesRanks = $this->rankBySellPrices($fees);
+
+        foreach($trades as $key => $trade) {
+            $sorted[] = $trade;
+            $sorted[] = $fees[array_search($tradeRanks[$key], $feesRanks)];
+            unset($fees[array_search($tradeRanks[$key], $feesRanks)]);
+        }
+        foreach($fees as $fee) {
+            $sorted[] = $fee;
+        }
+        foreach($others as $other) {
+            $sorted[] = $other;
+        }
+        return $sorted;
+    }
+
+    /**
+     * @param Transaction[] $trades
+     * @return array ranks index -> order
+     */
+    private function rankBySellPrices(array $transactions): array
+    {
+        $prices = array_reduce($transactions, function ($carry, $transaction) {
+            $carry[] = $transaction->getSellPayment()->getEuroValue();
+            return $carry;
+        }) ?? [];
+        $ranks = $prices;
+        sort($prices);
+        foreach ($ranks as $index => $value) {
+            $ranks[$index] = array_search($value, $prices);
+        }
+        return $ranks;
     }
 }

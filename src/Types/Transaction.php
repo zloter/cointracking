@@ -10,29 +10,17 @@ class Transaction
 
     /**
      * @param int $time
-     * @param TransactionType $type
-     * @param string|null $buyCurrency
-     * @param float|null $buyAmount
-     * @param string|null $sellCurrency
-     * @param float|null $sellAmount
+     * @param \Zloter\Cointracking\Types\TransactionType $type
+     * @param Payment|null $buyPayment
+     * @param Payment|null $sellPayment
      * @throws Exception
      */
     public function __construct(
-        private int             $time,
+        private int $time,
         private TransactionType $type,
-        private ?string         $buyCurrency,
-        private ?float          $buyAmount,
-        private ?string         $sellCurrency,
-        private ?float          $sellAmount,
-    )
-    {
-        if (!empty($buyCurrency) && !ctype_upper($buyCurrency)) {
-            throw new Exception("CurrencyNotUppercase $buyCurrency");
-        }
-        if (!empty($sellCurrency) && !ctype_upper($sellCurrency)) {
-            throw new Exception("CurrencyNotUppercase $sellCurrency");
-        }
-    }
+        private ?Payment $buyPayment,
+        private ?Payment $sellPayment
+    ) {}
 
     /**
      * @return int
@@ -50,36 +38,21 @@ class Transaction
     }
 
     /**
-     * @return string|null
+     * @return Payment|null
      */
-    public function getBuyCurrency(): ?string
+    public function getBuyPayment(): ?Payment
     {
-        return $this->buyCurrency;
+        return $this->buyPayment;
     }
 
     /**
-     * @return string|null
+     * @return Payment|null
      */
-    public function getBuyAmount(): ?string
+    public function getSellPayment(): ?Payment
     {
-        return $this->buyAmount;
+        return $this->sellPayment;
     }
 
-    /**
-     * @return string|null
-     */
-    public function getSellCurrency(): ?string
-    {
-        return $this->sellCurrency;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getSellAmount(): ?string
-    {
-        return $this->sellAmount;
-    }
 
     /**
      * @param Transaction $transaction
@@ -87,10 +60,9 @@ class Transaction
      */
     public function copyMissingData(Transaction $transaction): void
     {
-        $this->buyAmount = $this->buyAmount ?? $transaction->getBuyAmount();
-        $this->buyCurrency = $this->buyCurrency ?? $transaction->getBuyCurrency();
-        $this->sellAmount = $this->sellAmount ?? $transaction->getSellAmount();
-        $this->sellCurrency = $this->sellCurrency ?? $transaction->getSellCurrency();
+
+        $this->buyPayment = $this->buyPayment ?? $transaction->getBuyPayment();
+        $this->sellPayment = $this->sellPayment ?? $transaction->getSellPayment();
     }
 
 }

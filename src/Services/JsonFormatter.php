@@ -27,17 +27,16 @@ class JsonFormatter
             $arr = [];
             $arr['time'] = $transaction->getTime();
             $arr['type'] = $transaction->getType();
-            if ($transaction->getBuyCurrency()) {
-                $arr['buy_currency'] = $transaction->getBuyCurrency();
+            if ($transaction->getBuyPayment()) {
+                $arr['buy_currency'] = $transaction->getBuyPayment()->getCurrency();
+                $arr['buy'] = (float) $transaction->getBuyPayment()->getAmount();
+                $arr['buy_eur'] = (float) $transaction->getBuyPayment()->getEuroValue();
+
             }
-            if ($transaction->getBuyAmount()) {
-                $arr['buy'] = (float) $transaction->getBuyAmount();
-            }
-            if ($transaction->getSellCurrency()) {
-                $arr['sell_currency'] = $transaction->getSellCurrency();
-            }
-            if ($transaction->getSellAmount()) {
-                $arr['sell'] = (float) $transaction->getSellAmount();
+            if ($transaction->getSellPayment()) {
+                $arr['sell_currency'] = $transaction->getSellPayment()->getCurrency();
+                $arr['sell'] = (float) $transaction->getSellPayment()->getAmount();
+                $arr['sell_eur'] = (float) $transaction->getSellPayment()->getEuroValue();
             }
             $content .= json_encode($arr, JSON_PRETTY_PRINT);
         }
